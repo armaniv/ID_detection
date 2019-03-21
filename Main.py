@@ -4,14 +4,15 @@
 import os
 import json
 import cv2
-from matplotlib import pyplot as plt
+import numpy as np
+#from matplotlib import pyplot as plt
 
 PATH = '/home/vale/Documenti/Project Course/DataSet'  # the path where the dataset is located
 
 
 def compute_image_histogram(img_name, quadrant):
     """
-        Method that returns the histogram of the identity document (properly cuted off) within the passed image.
+        Method that returns the histogram of the identity document within the passed image.
 
         Parameters
         ----------
@@ -44,26 +45,20 @@ def compute_image_histogram(img_name, quadrant):
     h = max(abs(y_tl - y_br), abs(y_bl - y_tr))
 
     # get the coordinates where start to cut off (necessary for any rotated documents)
-    x_start= min(x_tl,x_bl)
-    y_start= min(y_tl,y_tr)
+    x_start = min(x_tl, x_bl)
+    y_start = min(y_tl, y_tr)
 
-    cut_img = img[y_start:y_start + h, x_start:x_start + w]
+    # create a mask with the computed values
+    mask = np.zeros(img.shape[:2], np.uint8)
+    mask[y_start:y_start + h, x_start:x_start + w] = 255
 
     color = ('b', 'g', 'r')
     for channel, col in enumerate(color):
-        histogram = cv2.calcHist([cut_img], [channel], None, [256], [0, 256])
-        plt.plot(histogram, color=col)
-        plt.xlim([0, 256])
+        histogram = cv2.calcHist([img], [channel], mask, [256], [0, 256])
+        # plt.plot(histogram, color=col)
+        # plt.xlim([0, 256])
 
-    plt.title('Histogram')
-    plt.show()
-    cv2.imshow("Cut img", cut_img)
-
-    while True:
-        k = cv2.waitKey(0) & 0xFF
-        if k == 27: break  # ESC key to exit
-
-    cv2.destroyAllWindows()
+    # plt.show()
 
     return histogram
 
@@ -122,7 +117,7 @@ def find_best_image():
     for document in document_directories:
         path_img_dir = PATH + '/' + document + '/images'  # the 'images' directory of the current document
         img_directories = next(os.walk(path_img_dir))[1]  # get the (10) image directories of the document
-        best_img_subdir = dict.fromkeys(img_directories)  # dict. with the best image for each folder
+        best_img_sub_dict = dict.fromkeys(img_directories)  # dict. with the best image for each folder
 
         for img_dir in img_directories:
             path_img = path_img_dir + '/' + img_dir
@@ -130,13 +125,26 @@ def find_best_image():
 
             for img in images:
                 fully_inside, quadrant = get_position(document, img_dir, img)
-                if fully_inside:
-                    if best_img_subdir[img_dir] is None:  # if there isn't already one image set as the best
-                        best_img_subdir[img_dir] = img
-                    compute_image_histogram(path_img + '/' + img, quadrant)
+                if fully_inside:    # could be that a directory doesn't contain any image with a document fully within
+                    if best_img_sub_dict[img_dir] is None:  # if there isn't already one image set as the best
+                        hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
+                        best_img_sub_dict[img_dir] = [img, hstgr]
+                    else:
+                        hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
+                        best_sofar_hstgr = best_img_sub_dict[img_dir][1]
+                        # TODO choose best histogram
 
-        best_images[document] = best_img_subdir
-    print(best_images)
+        best_images[document] = best_img_sub_dict
+
+    # print in a readable way the dictionary that contains the best images
+    for key in best_images.keys():
+        print(key, end=' -> {')
+        for key2, value in best_images[key].items():
+            if value is None:   # if no best image for the current folder is present
+                print(key2 + ':', '--', end=', ')
+            else:
+                print(key2 + ':', value[0], end=', ')
+        print('}')
 
 
 find_best_image()
