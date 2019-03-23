@@ -5,14 +5,15 @@ import os
 import json
 import cv2
 import numpy as np
-#from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 PATH = '/home/vale/Documenti/Project Course/DataSet'  # the path where the dataset is located
 
 
-def compute_image_histogram(img_name, quadrant):
+def compute_image_histogram(img_name, quadrant, use_mask=True):
     """
-        Method that returns the histogram of the identity document within the passed image.
+        Method that returns the histogram of the passed image. If 'use_mask' is set to True the method compute the
+        histogram of the 'quadrant' only
 
         Parameters
         ----------
@@ -21,43 +22,48 @@ def compute_image_histogram(img_name, quadrant):
         quadrant: list
             The list of coordinates [x,y] (top-left, top-right, bottom-right, bottom-left) of the identity document
             within the passed image
+        use_mask: bool
+            Specify if apply a mask to the image in order to consider the quadrant only. Default = True
+
 
         Returns
         -------
         histogram : cv2.hist
-            The histogram of the identity document within the passed image
+            The computed histogram
         """
 
-    img = cv2.imread(img_name, -1)  # imread unchanged
+    tmp_img = cv2.imread(img_name)
+    img = cv2.cvtColor(tmp_img, cv2.COLOR_BGR2HSV)  # Convert the image from BGR to HSV format
 
-    # get the coordinate of the 4 vertices of the identity document (tl -> top left, br -> bottom right, ...)
-    x_tl = quadrant[0][0]
-    y_tl = quadrant[0][1]
-    x_tr = quadrant[1][0]
-    y_tr = quadrant[1][1]
-    x_br = quadrant[2][0]
-    y_br = quadrant[2][1]
-    x_bl = quadrant[3][0]
-    y_bl = quadrant[3][1]
+    if use_mask:
+        # get the coordinate of the 4 vertices of the identity document (tl -> top left, br -> bottom right, ...)
+        x_tl = quadrant[0][0]
+        y_tl = quadrant[0][1]
+        x_tr = quadrant[1][0]
+        y_tr = quadrant[1][1]
+        x_br = quadrant[2][0]
+        y_br = quadrant[2][1]
+        x_bl = quadrant[3][0]
+        y_bl = quadrant[3][1]
 
-    # get the max height and width (necessary for any rotated documents)
-    w = max(abs(x_tl - x_br), abs(x_bl - x_tr))
-    h = max(abs(y_tl - y_br), abs(y_bl - y_tr))
+        # get the max height and width (necessary for any rotated documents)
+        w = max(abs(x_tl - x_br), abs(x_bl - x_tr))
+        h = max(abs(y_tl - y_br), abs(y_bl - y_tr))
 
-    # get the coordinates where start to cut off (necessary for any rotated documents)
-    x_start = min(x_tl, x_bl)
-    y_start = min(y_tl, y_tr)
+        # get the coordinates where start to cut off (necessary for any rotated documents)
+        x_start = min(x_tl, x_bl)
+        y_start = min(y_tl, y_tr)
 
-    # create a mask with the computed values
-    mask = np.zeros(img.shape[:2], np.uint8)
-    mask[y_start:y_start + h, x_start:x_start + w] = 255
+        # create a mask with the computed values
+        mask = np.zeros(img.shape[:2], np.uint8)
+        mask[y_start:y_start + h, x_start:x_start + w] = 255
 
-    color = ('b', 'g', 'r')
-    for channel, col in enumerate(color):
-        histogram = cv2.calcHist([img], [channel], mask, [256], [0, 256])
-        # plt.plot(histogram, color=col)
-        # plt.xlim([0, 256])
+    if use_mask:
+        histogram = cv2.calcHist([img], [0, 1], mask, [180, 256], [0, 180, 0, 256])
+    else:
+        histogram = cv2.calcHist([img], [0, 1], None, [180, 256], [0, 180, 0, 256])
 
+    # plt.plot(histogram)
     # plt.show()
 
     return histogram
@@ -65,7 +71,7 @@ def compute_image_histogram(img_name, quadrant):
 
 def get_position(dir_name, subdir_name, img_name):
     """
-    Method that returns if the image fully contains the identity document and its position inside it.
+    Method that returns if the image fully contains a identity document and its position inside the image.
     (Image size 1080x1920)
 
     Parameters
@@ -75,12 +81,12 @@ def get_position(dir_name, subdir_name, img_name):
     subdir_name : str
         The name of the directory inside @dir_name that contains @img_name
     img_name : str
-        The name of the image that is checked if fully contains the identity document
+        The name of the image
 
     Returns
     -------
     fully : bool
-        True if the image fully contains the identity document
+        True if the image fully contains a identity document
     quadrant : list
         The list of coordinates [x,y] (top-left, top-right, bottom-right, bottom-left) of the identity document
     """
@@ -107,8 +113,13 @@ def get_position(dir_name, subdir_name, img_name):
 
 def find_best_image():
     """
-    Wrapper method that find for each folder inside the MIDV-500 dataset the best image (the one with the most balanced
-    histogram)
+    Wrapper method that find for each folder inside the MIDV-500 dataset the best image (the one with the least
+    Kullback-Leibler divergence wrt the base image of the document)
+
+    Returns
+    -------
+    best_images : dict
+        The dictionary that contains the selected images
     """
 
     document_directories = next(os.walk(PATH))[1]  # get the (50) 'global' directories
@@ -118,6 +129,9 @@ def find_best_image():
         path_img_dir = PATH + '/' + document + '/images'  # the 'images' directory of the current document
         img_directories = next(os.walk(path_img_dir))[1]  # get the (10) image directories of the document
         best_img_sub_dict = dict.fromkeys(img_directories)  # dict. with the best image for each folder
+        base_histogram = compute_image_histogram(path_img_dir + '/' + document + '.tif', [],
+                                                 False)  # compute the histogram of the base image, it will be used as
+                                                         # reference for all the comparisisons
 
         for img_dir in img_directories:
             path_img = path_img_dir + '/' + img_dir
@@ -125,26 +139,22 @@ def find_best_image():
 
             for img in images:
                 fully_inside, quadrant = get_position(document, img_dir, img)
-                if fully_inside:    # could be that a directory doesn't contain any image with a document fully within
+                if fully_inside:  # could be that a directory doesn't contain any image with a document fully within
                     if best_img_sub_dict[img_dir] is None:  # if there isn't already one image set as the best
                         hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
-                        best_img_sub_dict[img_dir] = [img, hstgr]
+                        comp_value = cv2.compareHist(base_histogram, hstgr, cv2.HISTCMP_KL_DIV)
+                        best_img_sub_dict[img_dir] = [img, comp_value]
                     else:
                         hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
-                        best_sofar_hstgr = best_img_sub_dict[img_dir][1]
-                        # TODO choose best histogram
+                        best_sofar_value = best_img_sub_dict[img_dir][1]
+                        comp_value = cv2.compareHist(base_histogram, hstgr, cv2.HISTCMP_KL_DIV)
+                        if comp_value < best_sofar_value:
+                            best_img_sub_dict[img_dir] = [img, comp_value]
 
         best_images[document] = best_img_sub_dict
 
-    # print in a readable way the dictionary that contains the best images
-    for key in best_images.keys():
-        print(key, end=' -> {')
-        for key2, value in best_images[key].items():
-            if value is None:   # if no best image for the current folder is present
-                print(key2 + ':', '--', end=', ')
-            else:
-                print(key2 + ':', value[0], end=', ')
-        print('}')
+    return best_images
 
 
-find_best_image()
+dict_best = find_best_image()
+print(dict_best)
