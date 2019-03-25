@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -157,4 +156,4 @@ def find_best_image():
 
 
 dict_best = find_best_image()
-print(dict_best)
+print(json.dumps(dict_best, indent=2))
