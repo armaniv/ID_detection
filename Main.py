@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 # from matplotlib import pyplot as plt
 
-PATH = '/home/vale/Documenti/Project Course/DataSet'  # the path where the dataset is located
+PATH = '/media/vale/Elements/Vale/Dataset Images'  # the path where the dataset is located
 
 
 def compute_image_histogram(img_name, quadrant, use_mask=True):
@@ -139,14 +139,12 @@ def find_best_image():
             for img in images:
                 fully_inside, quadrant = get_position(document, img_dir, img)
                 if fully_inside:  # could be that a directory doesn't contain any image with a document fully within
+                    hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
+                    comp_value = cv2.compareHist(base_histogram, hstgr, cv2.HISTCMP_KL_DIV)
                     if best_img_sub_dict[img_dir] is None:  # if there isn't already one image set as the best
-                        hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
-                        comp_value = cv2.compareHist(base_histogram, hstgr, cv2.HISTCMP_KL_DIV)
                         best_img_sub_dict[img_dir] = [img, comp_value]
                     else:
-                        hstgr = compute_image_histogram(path_img + '/' + img, quadrant)
                         best_sofar_value = best_img_sub_dict[img_dir][1]
-                        comp_value = cv2.compareHist(base_histogram, hstgr, cv2.HISTCMP_KL_DIV)
                         if comp_value < best_sofar_value:
                             best_img_sub_dict[img_dir] = [img, comp_value]
 
