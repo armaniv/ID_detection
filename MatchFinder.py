@@ -2,31 +2,33 @@
 
 import numpy as np
 import cv2 as cv
-
 from matplotlib import pyplot as plt
+
+# code take from https://docs.opencv.org/3.4.1/d1/de0/tutorial_py_feature_homography.html
 
 PATH = '/media/vale/HDDVale/Uni/DataSet'
 MIN_MATCH_COUNT = 10
+FLANN_INDEX_KDTREE = 1
 
 img1 = cv.imread('/home/vale/Scaricati/model_30_ita_drvlic.tif', 1)  # queryImage
 img2 = cv.imread('/home/vale/Scaricati/ita_drvid_3.jpg', 1)  # trainImage
-#img2 = cv.imread(PATH + '/32_lva_passport/images/KA/KA32_06.tif', 1)  # trainImage
 
-# Initiate SIFT detector
-sift = cv.xfeatures2d.SIFT_create()
-# find the keypoints and descriptors with SIFT
+sift = cv.xfeatures2d.SIFT_create()  # Initiate SIFT detector
+
+# find the key-points and descriptors with SIFT
 kp1, des1 = sift.detectAndCompute(img1, None)
 kp2, des2 = sift.detectAndCompute(img2, None)
-FLANN_INDEX_KDTREE = 1
 index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
 search_params = dict(checks=50)
 flann = cv.FlannBasedMatcher(index_params, search_params)
 matches = flann.knnMatch(des1, des2, k=2)
+
 # store all the good matches as per Lowe's ratio test.
 good = []
 for m, n in matches:
     if m.distance < 0.7 * n.distance:
         good.append(m)
+
 print(len(good))
 
 if len(good) > MIN_MATCH_COUNT:
