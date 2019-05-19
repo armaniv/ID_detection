@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-PATH = '/media/vale/Elements/Vale/Dataset Images'  # the path where the dataset is located
+PATH = '/media/vale/HDDVale/Uni/DataSet'  # the path where the dataset is located
 
 
 def compute_image_histogram(img_name, quadrangle, use_mask=True):
