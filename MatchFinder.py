@@ -9,10 +9,10 @@ PATH = '/media/vale/HDDVale/Uni/DataSet'
 MIN_MATCH_COUNT = 10
 FLANN_INDEX_KDTREE = 1
 
-img1 = cv.imread(PATH + '/30_ita_drvlic/images/30_ita_drvlic.tif', 1)     # queryImage
-img2 = cv.imread(PATH + '/30_ita_drvlic/images/CA/CA30_02.tif', 1)             # trainImage
+img1 = cv.imread(PATH + '/30_ita_drvlic/images/30_ita_drvlic.tif', 1)  # queryImage
+img2 = cv.imread(PATH + '/30_ita_drvlic/images/CA/CA30_02.tif', 1)  # trainImage
 
-sift = cv.xfeatures2d.SIFT_create()                                     # Initiate SIFT detector
+sift = cv.xfeatures2d.SIFT_create()  # Initiate SIFT detector
 
 # find keypoints and descriptors with SIFT
 kp1, des1 = sift.detectAndCompute(img1, None)
@@ -32,16 +32,16 @@ for m, n in matches:
 
 print("Found %s matches" % (len(goods)))
 
-if len(goods) > MIN_MATCH_COUNT:                                         # the minimum accepted number of matches is 4
+if len(goods) > MIN_MATCH_COUNT:  # the minimum accepted number of matches is 4
     # extract the locations of matched keypoints
     src_pts = np.float32([kp1[m.queryIdx].pt for m in goods]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in goods]).reshape(-1, 1, 2)
 
-    # find the perspective transformation
+    # compute the homography matrix
     M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     matchesMask = mask.ravel().tolist()
 
-    # find the object
+    # do the perspective transformation and find the object
     h, w, d = img1.shape
     pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
     dst = cv.perspectiveTransform(pts, M)
