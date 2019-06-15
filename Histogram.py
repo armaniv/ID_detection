@@ -12,25 +12,24 @@ PATH = '/media/vale/HDDVale/Uni/DataSet'  # the path where the dataset is locate
 
 def compute_image_histogram(img_name, quadrangle, use_mask=True):
     """
-        Method that returns the histogram of the passed image. If 'use_mask' is set to True the method compute the
-        histogram of the 'quadrangle' only
+    Method that returns the histogram of the passed image. If 'use_mask' is set to True the method compute the
+    histogram of the 'quadrangle' only
 
-        Parameters
-        ----------
-        img_name : str
-            The path to the image that contains the identity document
-        quadrangle: list
-            The list of coordinates [x,y] (top-left, top-right, bottom-right, bottom-left) of the identity document
-            within the passed image
-        use_mask: bool
-            Specify if apply a mask to the image in order to consider the quadrangle only. Default = True
+    Parameters
+    ----------
+    img_name : str
+        The path to the image that contains the identity document
+    quadrangle: list
+        The list of coordinates [x,y] (top-left, top-right, bottom-right, bottom-left) of the identity document
+        within the passed image
+    use_mask: bool
+        Specify if apply a mask to the image in order to consider the quadrangle only. Default = True
 
-
-        Returns
-        -------
-        histogram : cv2.hist
-            The computed histogram
-        """
+    Returns
+    -------
+    histogram : cv2.hist
+        The computed histogram
+    """
 
     tmp_img = cv2.imread(img_name)
     img = cv2.cvtColor(tmp_img, cv2.COLOR_BGR2HSV)  # Convert the image from BGR to HSV format
@@ -145,19 +144,19 @@ def compute_distances():
 
 def find_best_images(kl_dist):
     """
-        Method that return the images that have a Kullback-Leibler divergence lower than a fixed threshold
-        (the first quantile)
+    Method that return the images that have a Kullback-Leibler divergence lower than a fixed threshold
+    (the first quantile)
 
-        Parameters
-        ----------
-        kl_dist : dict
-            The dictionary containing the KL divergences stored as tuples of(image name, KL distance)
+    Parameters
+    ----------
+    kl_dist : dict
+        The dictionary containing the KL divergences stored as tuples of(image name, KL distance)
 
-        Returns
-        -------
-        best_images : dict
-            The dictionary that contains the selected images
-        """
+    Returns
+    -------
+    best_images : dict
+        The dictionary that contains the selected images
+    """
     best_images = dict.fromkeys(kl_dist.keys())  # new global dictionary (same structure as the passed one)
 
     for k1, v1 in kl_dist.items():  # iterate through the passed dictionary

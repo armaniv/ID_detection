@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-# code based on https://docs.opencv.org/3.4.1/d1/de0/tutorial_py_feature_homography.html
+# code adapted from https://docs.opencv.org/3.4.1/d1/de0/tutorial_py_feature_homography.html
 
 import numpy as np
 import cv2 as cv
 import sys
+import os
 from matplotlib import pyplot as plt
-
 
 MIN_MATCH_COUNT = 10
 FLANN_INDEX_KDTREE = 1
@@ -13,7 +13,7 @@ FLANN_INDEX_KDTREE = 1
 
 def show_image(image):
     """
-      Method that outputs an image
+    Method that outputs an image
 
     Parameters
     ----------
@@ -26,29 +26,81 @@ def show_image(image):
     plt.show()
 
 
-def extract_document(query_img, train_img, out_mapping=False):
+def compute_key_descriptor(img_query, path_img_query, img_train, path_img_train):
     """
-     Method that, given two images (query and train) outputs the extracted query_img inside the train_img and,
-     if chosen, outputs the mapping between the two images
+    Method that
 
     Parameters
     ----------
-    query_img : str
+    img_query : img
+        bla bla
+    img_train : img
+        bla bla
+
+    Returns
+    -------
+
+    """
+    precomp = os.listdir("./precomp_key-des")
+    query_filename = os.path.splitext(os.path.basename(path_img_query))[0] + ".yml"
+    path_precom_file = "./precomp_key-des/" + query_filename
+    already_present = False
+
+    for i in precomp:
+        if i == query_filename:
+            already_present = True
+            break
+
+    sift = cv.xfeatures2d.SIFT_create()  # Initiate SIFT detector
+
+    if already_present:
+        # read from file
+        fs_read = cv.FileStorage(path_precom_file, cv.FILE_STORAGE_READ)
+        des_qr = fs_read.getNode('descriptor').mat()
+        kp_qr_tmp = fs_read.getNode('keypoint').mat()
+        fs_read.release()
+
+        # reverse transformation for the  keypoint
+        kp_qr = [cv.KeyPoint(x, y, _size, _angle, _response, int(_octave), int(_class_id))
+                 for x, y, _size, _angle, _response, _octave, _class_id in list(kp_qr_tmp)]
+
+    else:
+        # find keypoints and descriptors with SIFT
+        kp_qr, des_qr = sift.detectAndCompute(img_query, None)
+
+        # transform keypoint in order to be serializable
+        kp_qr_tmp = np.array([[k.pt[0], k.pt[1], k.size, k.angle, k.response, k.octave, k.class_id] for k in kp_qr])
+
+        # write to file
+        fs_write = cv.FileStorage(path_precom_file, cv.FILE_STORAGE_WRITE)
+        fs_write.write("descriptor", des_qr)
+        fs_write.write("keypoint", kp_qr_tmp)
+        fs_write.release()
+
+    kp_tr, des_tr = sift.detectAndCompute(img_train, None)
+
+    return kp_qr, des_qr, kp_tr, des_tr
+
+
+def extract_document(path_img_query, path_img_train, out_mapping=False):
+    """
+    Method that, given two images (query and train) outputs the extracted query_img from the train_img and,
+    if selected, outputs the mapping between the two images
+
+    Parameters
+    ----------
+    path_img_query : str
         The path to the image of the identity document model
-    train_img: str
+    path_img_train: str
         The path to the image that contains the identity document to detect
     out_mapping: bool
         Give in output also an image with the mapping between @query_img and @train_img. Default = False
     """
 
-    img_query = cv.imread(query_img, 1)
-    img_train = cv.imread(train_img, 1)
+    img_query = cv.imread(path_img_query, 1)
+    img_train = cv.imread(path_img_train, 1)
 
-    sift = cv.xfeatures2d.SIFT_create()  # Initiate SIFT detector
-
-    # find keypoints and descriptors with SIFT
-    kp_qr, des_qr = sift.detectAndCompute(img_query, None)
-    kp_tr, des_tr = sift.detectAndCompute(img_train, None)
+    kp_qr,des_qr,kp_tr,des_tr = compute_key_descriptor(img_query, path_img_query, img_train, path_img_train)
 
     # use FLANN algorithms for a fast match between descriptors.
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
