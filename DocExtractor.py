@@ -26,26 +26,39 @@ def show_image(image):
     plt.show()
 
 
-def compute_key_descriptor(img_query, path_img_query, img_train, path_img_train):
+def compute_key_descriptor(img_query, path_img_query, img_train):
     """
-    Method that
+    Method that compute the keypoints and the descriptors using SIFT for the two images. For the query_img store
+    the keypont and the descriptor on a file in order to be reused in the future without recomputation.
 
     Parameters
     ----------
     img_query : img
-        bla bla
+        The query image
+    path_img_query : str
+        The path of the query image
     img_train : img
-        bla bla
+        The train image
 
     Returns
     -------
-
+    kp_qr : keypoint
+        The computed keypoint of the query image
+    des_qr : descriptor
+       The computed descriptor of the query image
+    kp_tr : keypoint
+        The computed keypoint of the training image
+    des_tr : descriptor
+        The computed descriptor of the training image
     """
-    precomp = os.listdir("./precomp_key-des")
-    query_filename = os.path.splitext(os.path.basename(path_img_query))[0] + ".yml"
+
+    precomp = os.listdir("./precomp_key-des")  # get the list of files inside the directory
+    query_filename = os.path.splitext(os.path.basename(path_img_query))[0] + ".yml"  # retrieves the filename from the
+                                                                                     # path and add the extension
     path_precom_file = "./precomp_key-des/" + query_filename
     already_present = False
 
+    # search for the file
     for i in precomp:
         if i == query_filename:
             already_present = True
@@ -65,10 +78,10 @@ def compute_key_descriptor(img_query, path_img_query, img_train, path_img_train)
                  for x, y, _size, _angle, _response, _octave, _class_id in list(kp_qr_tmp)]
 
     else:
-        # find keypoints and descriptors with SIFT
+        # find keypoints and descriptors with SIFT for the img_query
         kp_qr, des_qr = sift.detectAndCompute(img_query, None)
 
-        # transform keypoint in order to be serializable
+        # transform keypoints in order to be serializable
         kp_qr_tmp = np.array([[k.pt[0], k.pt[1], k.size, k.angle, k.response, k.octave, k.class_id] for k in kp_qr])
 
         # write to file
@@ -77,6 +90,7 @@ def compute_key_descriptor(img_query, path_img_query, img_train, path_img_train)
         fs_write.write("keypoint", kp_qr_tmp)
         fs_write.release()
 
+    # find keypoints and descriptors with SIFT for the img_train
     kp_tr, des_tr = sift.detectAndCompute(img_train, None)
 
     return kp_qr, des_qr, kp_tr, des_tr
@@ -90,17 +104,17 @@ def extract_document(path_img_query, path_img_train, out_mapping=False):
     Parameters
     ----------
     path_img_query : str
-        The path to the image of the identity document model
+        The path to the identity document model image
     path_img_train: str
         The path to the image that contains the identity document to detect
     out_mapping: bool
-        Give in output also an image with the mapping between @query_img and @train_img. Default = False
+        Output the image with the mapping between the @query_img and the @train_img. Default = False
     """
 
     img_query = cv.imread(path_img_query, 1)
     img_train = cv.imread(path_img_train, 1)
 
-    kp_qr,des_qr,kp_tr,des_tr = compute_key_descriptor(img_query, path_img_query, img_train, path_img_train)
+    kp_qr, des_qr, kp_tr, des_tr = compute_key_descriptor(img_query, path_img_query, img_train)
 
     # use FLANN algorithms for a fast match between descriptors.
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
@@ -151,14 +165,10 @@ def extract_document(path_img_query, path_img_train, out_mapping=False):
         print("Not enough matches are found")
 
 
-im1 = "/home/vale/Documenti/Project Course/Immagini/Match documenti/model_30_ita.png"
-im2 = "/home/vale/Documenti/Project Course/Immagini/Match documenti/ita_drvid_2.jpg"
-extract_document(im1, im2, True)
-
-# if len(sys.argv) == 3:
-#     ExtractDocument(sys.argv[1],sys.argv[2])
-# elif len(sys.argv) == 4:
-#     bool_argv3 = sys.argv[3].lower() == 'true'
-#     ExtractDocument(sys.argv[1], sys.argv[2], bool_argv3)
-# else:
-#     print("Wrong parameters number")
+if len(sys.argv) == 3:
+    extract_document(sys.argv[1], sys.argv[2])
+elif len(sys.argv) == 4:
+    bool_argv3 = sys.argv[3].lower() == 'true'
+    extract_document(sys.argv[1], sys.argv[2], bool_argv3)
+else:
+    print("Wrong parameters number")
